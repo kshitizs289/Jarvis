@@ -1,0 +1,1370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#000814">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="JARVIS">
+<title>J.A.R.V.I.S</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --arc: #00d4ff; --arc-dim: #0077aa; --arc-glow: rgba(0,212,255,0.3);
+    --arc-deep: rgba(0,212,255,0.08); --gold: #f5a623; --red: #ff3333;
+    --green: #00ff88; --bg: #000814; --panel: rgba(0,20,40,0.85);
+    --glass: rgba(0,212,255,0.06); --text: #c8f0ff; --dim: #4a8fa8;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { width:100%; height:100%; overflow:hidden; background:var(--bg); font-family:'Rajdhani',sans-serif; color:var(--text); touch-action:none; }
+
+  /* LOADER */
+  #loader { position:fixed; inset:0; z-index:9999; background:#000; display:flex; flex-direction:column; align-items:center; justify-content:center; overflow:hidden; }
+  #loader canvas { position:absolute; inset:0; }
+  .loader-core { position:relative; z-index:10; display:flex; flex-direction:column; align-items:center; gap:20px; }
+  .arc-reactor { width:120px; height:120px; position:relative; }
+  .arc-reactor svg { width:100%; height:100%; }
+  .ring1 { animation:spin 3s linear infinite; transform-origin:center; }
+  .ring2 { animation:spin 2s linear infinite reverse; transform-origin:center; }
+  .ring3 { animation:spin 5s linear infinite; transform-origin:center; }
+  .core-pulse { animation:corePulse 1.5s ease-in-out infinite; }
+  @keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+  @keyframes corePulse { 0%,100%{opacity:0.6;filter:drop-shadow(0 0 6px var(--arc))} 50%{opacity:1;filter:drop-shadow(0 0 20px var(--arc)) drop-shadow(0 0 40px var(--arc-dim))} }
+  .loader-title { font-family:'Orbitron',sans-serif; font-size:28px; font-weight:900; letter-spacing:12px; color:var(--arc); text-shadow:0 0 30px var(--arc),0 0 60px var(--arc-dim); }
+  .loader-sub { font-family:'Share Tech Mono',monospace; font-size:11px; color:var(--dim); letter-spacing:4px; text-transform:uppercase; }
+  .boot-log { font-family:'Share Tech Mono',monospace; font-size:10px; color:#00ff88; letter-spacing:1px; height:80px; overflow:hidden; text-align:left; width:280px; opacity:0.8; }
+  .boot-line { padding:1px 0; animation:fadeIn 0.3s ease; }
+  @keyframes fadeIn { from{opacity:0;transform:translateX(-10px)} to{opacity:1;transform:none} }
+  .progress-bar { width:280px; height:2px; background:rgba(0,212,255,0.15); border-radius:2px; overflow:hidden; }
+  .progress-fill { height:100%; width:0%; background:linear-gradient(90deg,var(--arc-dim),var(--arc),#fff); box-shadow:0 0 10px var(--arc); transition:width 0.3s ease; }
+  .progress-pct { font-family:'Orbitron',monospace; font-size:12px; color:var(--arc); letter-spacing:2px; text-align:center; }
+
+  /* APP */
+  #app { position:fixed; inset:0; display:none; flex-direction:column; overflow:hidden; }
+  #app.visible { display:flex; }
+  #bg-canvas { position:absolute; inset:0; z-index:0; }
+  .scanlines { position:fixed; inset:0; z-index:1; pointer-events:none; background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.03) 2px,rgba(0,0,0,0.03) 4px); animation:scanMove 8s linear infinite; }
+  @keyframes scanMove { from{background-position:0 0} to{background-position:0 40px} }
+  .vignette { position:fixed; inset:0; z-index:2; pointer-events:none; background:radial-gradient(ellipse at center,transparent 40%,rgba(0,4,12,0.8) 100%); }
+  .corner { position:fixed; z-index:10; width:60px; height:60px; pointer-events:none; }
+  .corner::before,.corner::after { content:''; position:absolute; background:var(--arc); box-shadow:0 0 8px var(--arc); }
+  .corner::before { width:30px; height:2px; }
+  .corner::after { width:2px; height:30px; }
+  .corner-tl{top:12px;left:12px} .corner-tl::before{top:0;left:0} .corner-tl::after{top:0;left:0}
+  .corner-tr{top:12px;right:12px} .corner-tr::before{top:0;right:0} .corner-tr::after{top:0;right:0}
+  .corner-bl{bottom:12px;left:12px} .corner-bl::before{bottom:0;left:0} .corner-bl::after{bottom:0;left:0}
+  .corner-br{bottom:12px;right:12px} .corner-br::before{bottom:0;right:0} .corner-br::after{bottom:0;right:0}
+
+  /* HEADER */
+  .hud-header { position:relative; z-index:20; padding:16px 20px 8px; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid rgba(0,212,255,0.15); background:linear-gradient(180deg,rgba(0,8,20,0.9),transparent); }
+  .hud-logo { display:flex; align-items:center; gap:10px; }
+  .mini-reactor { width:32px; height:32px; animation:corePulse 2s ease-in-out infinite; }
+  .jarvis-name { font-family:'Orbitron',sans-serif; font-size:18px; font-weight:900; color:var(--arc); text-shadow:0 0 20px var(--arc); letter-spacing:6px; }
+  .jarvis-ver { font-family:'Share Tech Mono',monospace; font-size:9px; color:var(--dim); letter-spacing:2px; display:block; margin-top:-2px; }
+  .hud-status { display:flex; flex-direction:column; align-items:flex-end; gap:4px; }
+  .status-dot { display:flex; align-items:center; gap:6px; font-family:'Share Tech Mono',monospace; font-size:9px; color:var(--arc); letter-spacing:1px; }
+  .dot { width:6px; height:6px; border-radius:50%; background:#00ff88; box-shadow:0 0 6px #00ff88; animation:blink 2s ease-in-out infinite; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+  .sys-time { font-family:'Orbitron',monospace; font-size:11px; color:var(--arc); }
+  .wake-indicator { display:flex; align-items:center; gap:5px; font-family:'Share Tech Mono',monospace; font-size:8px; letter-spacing:1px; padding:3px 8px; border-radius:20px; border:1px solid rgba(0,212,255,0.2); background:rgba(0,212,255,0.05); cursor:pointer; transition:all 0.3s; }
+  .wake-indicator.active { border-color:var(--green); background:rgba(0,255,136,0.08); color:var(--green); }
+  .wake-indicator.active .wi-dot { background:var(--green); box-shadow:0 0 6px var(--green); }
+  .wi-dot { width:5px; height:5px; border-radius:50%; background:var(--dim); transition:all 0.3s; }
+
+  /* CONTENT */
+  .hud-content { position:relative; z-index:10; flex:1; display:flex; flex-direction:column; overflow:hidden; padding:0 10px; }
+  .radar-zone { display:flex; justify-content:center; padding:8px 0 4px; position:relative; height:140px; flex-shrink:0; }
+  .status-ring { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); font-family:'Orbitron',monospace; font-size:10px; color:var(--arc); letter-spacing:2px; text-align:center; pointer-events:none; text-shadow:0 0 10px var(--arc); }
+  .status-ring .mode-label { font-size:8px; color:var(--dim); letter-spacing:3px; display:block; margin-top:2px; }
+
+  /* CHAT */
+  .chat-area { flex:1; overflow-y:auto; overflow-x:hidden; padding:4px 4px 8px; display:flex; flex-direction:column; gap:8px; scrollbar-width:thin; scrollbar-color:var(--arc-dim) transparent; mask-image:linear-gradient(180deg,transparent 0%,black 8%,black 92%,transparent 100%); }
+  .chat-area::-webkit-scrollbar { width:2px; }
+  .chat-area::-webkit-scrollbar-thumb { background:var(--arc-dim); border-radius:2px; }
+  .msg { display:flex; gap:8px; align-items:flex-start; animation:msgIn 0.4s cubic-bezier(0.23,1,0.32,1); }
+  @keyframes msgIn { from{opacity:0;transform:translateY(12px) scale(0.97)} to{opacity:1;transform:none} }
+  .msg.user { flex-direction:row-reverse; }
+  .msg-avatar { width:28px; height:28px; border-radius:50%; flex-shrink:0; border:1px solid var(--arc-dim); display:flex; align-items:center; justify-content:center; font-size:10px; background:var(--arc-deep); box-shadow:0 0 8px var(--arc-glow); }
+  .msg-avatar.user-av { background:rgba(245,166,35,0.1); border-color:var(--gold); box-shadow:0 0 8px rgba(245,166,35,0.3); font-size:12px; }
+  .msg-bubble { max-width:82%; padding:10px 14px; border-radius:2px 14px 14px 14px; font-size:13px; line-height:1.5; letter-spacing:0.3px; position:relative; overflow:hidden; }
+  .msg-bubble::before { content:''; position:absolute; inset:0; opacity:0.06; background:repeating-linear-gradient(90deg,transparent,transparent 3px,rgba(0,212,255,0.5) 3px,rgba(0,212,255,0.5) 4px); pointer-events:none; }
+  .jarvis-bubble { background:linear-gradient(135deg,rgba(0,40,70,0.9),rgba(0,20,40,0.95)); border:1px solid rgba(0,212,255,0.25); border-left:2px solid var(--arc); color:var(--text); box-shadow:0 0 20px rgba(0,212,255,0.08),inset 0 0 20px rgba(0,212,255,0.03); border-radius:14px 14px 14px 2px; }
+  .user-bubble { background:linear-gradient(135deg,rgba(245,166,35,0.12),rgba(245,100,0,0.08)); border:1px solid rgba(245,166,35,0.3); border-right:2px solid var(--gold); color:#ffe8a0; box-shadow:0 0 15px rgba(245,166,35,0.08); border-radius:14px 14px 2px 14px; text-align:right; }
+  .msg-label { font-family:'Share Tech Mono',monospace; font-size:8px; letter-spacing:2px; color:var(--arc); margin-bottom:4px; text-transform:uppercase; }
+  .user-bubble .msg-label { color:var(--gold); text-align:right; }
+  .thinking-dots { display:flex; gap:4px; align-items:center; padding:4px 0; }
+  .thinking-dots span { width:6px; height:6px; border-radius:50%; background:var(--arc); animation:tdot 1.2s ease-in-out infinite; }
+  .thinking-dots span:nth-child(2){animation-delay:0.2s} .thinking-dots span:nth-child(3){animation-delay:0.4s}
+  @keyframes tdot { 0%,80%,100%{transform:scale(0.6);opacity:0.3} 40%{transform:scale(1);opacity:1} }
+  .action-btn-row { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+  .action-btn { padding:7px 14px; background:rgba(0,212,255,0.1); border:1px solid rgba(0,212,255,0.4); border-radius:20px; color:var(--arc); font-family:'Rajdhani',sans-serif; font-size:12px; letter-spacing:0.5px; cursor:pointer; transition:all 0.2s; }
+  .action-btn:active,.action-btn:hover { background:rgba(0,212,255,0.2); box-shadow:0 0 10px var(--arc-glow); }
+  .res-action { font-family:'Share Tech Mono',monospace; font-size:10px; color:var(--arc); letter-spacing:1px; }
+  .result-card { background:rgba(0,30,55,0.8); border:1px solid rgba(0,212,255,0.2); border-radius:10px; padding:10px 12px; margin-top:8px; font-family:'Share Tech Mono',monospace; font-size:11px; }
+  .result-card .card-title { color:var(--arc); letter-spacing:2px; font-size:9px; margin-bottom:4px; }
+  .result-card .card-val { font-size:22px; color:#fff; font-family:'Orbitron',monospace; text-shadow:0 0 15px var(--arc); }
+
+  /* INPUT ZONE */
+  .input-zone { position:relative; z-index:20; padding:8px 12px 20px; background:linear-gradient(0deg,rgba(0,8,20,0.95),transparent); }
+  .input-row { display:flex; align-items:center; gap:8px; }
+  .input-wrap { flex:1; position:relative; }
+  .input-field { width:100%; padding:12px 16px; background:rgba(0,20,40,0.8); border:1px solid rgba(0,212,255,0.3); border-radius:30px; color:var(--text); font-family:'Rajdhani',sans-serif; font-size:14px; letter-spacing:0.5px; outline:none; caret-color:var(--arc); transition:border-color 0.3s,box-shadow 0.3s; -webkit-appearance:none; }
+  .input-field:focus { border-color:var(--arc); box-shadow:0 0 20px rgba(0,212,255,0.2),inset 0 0 10px rgba(0,212,255,0.05); }
+  .input-field::placeholder { color:var(--dim); }
+  .mic-btn,.send-btn { width:46px; height:46px; border-radius:50%; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all 0.3s; flex-shrink:0; }
+  .mic-btn { background:rgba(0,212,255,0.1); border:1px solid rgba(0,212,255,0.4); color:var(--arc); font-size:18px; position:relative; overflow:hidden; }
+  .mic-btn.listening { background:rgba(255,51,51,0.15); border-color:var(--red); color:var(--red); box-shadow:0 0 20px rgba(255,51,51,0.4); animation:micPulse 1s ease-in-out infinite; }
+  @keyframes micPulse { 0%,100%{box-shadow:0 0 20px rgba(255,51,51,0.4)} 50%{box-shadow:0 0 35px rgba(255,51,51,0.7),0 0 60px rgba(255,51,51,0.3)} }
+  .send-btn { background:linear-gradient(135deg,#0088cc,#00d4ff); color:#000; font-size:18px; box-shadow:0 0 15px rgba(0,212,255,0.4); }
+  .send-btn:active,.mic-btn:active { transform:scale(0.93); }
+  .quick-actions { display:flex; gap:6px; overflow-x:auto; padding:0 0 8px; margin-bottom:4px; scrollbar-width:none; }
+  .quick-actions::-webkit-scrollbar { display:none; }
+  .qa-btn { flex-shrink:0; padding:5px 12px; background:var(--arc-deep); border:1px solid rgba(0,212,255,0.2); border-radius:20px; color:var(--dim); font-family:'Rajdhani',sans-serif; font-size:11px; letter-spacing:1px; cursor:pointer; transition:all 0.25s; white-space:nowrap; }
+  .qa-btn:hover,.qa-btn:active { background:rgba(0,212,255,0.12); border-color:var(--arc); color:var(--arc); }
+
+  /* SIDE METRICS */
+  .metrics-bar { position:fixed; right:0; top:50%; transform:translateY(-50%); z-index:15; display:flex; flex-direction:column; gap:4px; padding-right:4px; }
+  .metric-chip { background:rgba(0,20,40,0.8); border:1px solid rgba(0,212,255,0.2); border-right:none; border-radius:6px 0 0 6px; padding:4px 6px; text-align:center; min-width:36px; }
+  .metric-val { font-family:'Orbitron',monospace; font-size:9px; color:var(--arc); display:block; }
+  .metric-lbl { font-family:'Share Tech Mono',monospace; font-size:7px; color:var(--dim); letter-spacing:1px; }
+
+  /* VOICE WAVE */
+  .voice-wave { position:fixed; bottom:90px; left:50%; transform:translateX(-50%); pointer-events:none; opacity:0; transition:opacity 0.3s; }
+  .voice-wave.active { opacity:1; }
+  .wave-bars { display:flex; gap:3px; align-items:center; height:30px; }
+  .wave-bar { width:3px; background:var(--arc); border-radius:2px; animation:waveAnim 0.6s ease-in-out infinite; }
+  .wave-bar:nth-child(1){animation-delay:0s;height:8px} .wave-bar:nth-child(2){animation-delay:0.1s;height:16px}
+  .wave-bar:nth-child(3){animation-delay:0.2s;height:22px} .wave-bar:nth-child(4){animation-delay:0.3s;height:30px}
+  .wave-bar:nth-child(5){animation-delay:0.2s;height:22px} .wave-bar:nth-child(6){animation-delay:0.1s;height:16px}
+  .wave-bar:nth-child(7){animation-delay:0s;height:8px}
+  @keyframes waveAnim { 0%,100%{transform:scaleY(0.4)} 50%{transform:scaleY(1)} }
+
+  /* NOTIFICATION */
+  .notif { position:fixed; top:70px; left:50%; transform:translateX(-50%); background:rgba(0,30,55,0.95); border:1px solid var(--arc); border-radius:20px; padding:8px 20px; font-family:'Share Tech Mono',monospace; font-size:11px; color:var(--arc); letter-spacing:1px; white-space:nowrap; z-index:999; opacity:0; transition:opacity 0.3s; pointer-events:none; box-shadow:0 0 20px var(--arc-glow); }
+  .notif.show { opacity:1; }
+
+  /* WAKE FLASH */
+  @keyframes wakeFlash { 0%{box-shadow:inset 0 0 0 0 rgba(0,255,136,0.4)} 100%{box-shadow:inset 0 0 60px 20px rgba(0,255,136,0)} }
+  .wake-flash { animation:wakeFlash 0.8s ease-out; }
+
+  /* MODALS */
+  .wa-modal { position:fixed; inset:0; z-index:8000; background:rgba(0,4,12,0.95); display:flex; flex-direction:column; align-items:center; justify-content:center; padding:24px; gap:14px; backdrop-filter:blur(10px); animation:fadeIn 0.3s ease; }
+  .wa-modal-title { font-family:'Orbitron',sans-serif; font-size:16px; font-weight:900; color:var(--arc); letter-spacing:4px; }
+  .contacts-panel { display:grid; grid-template-columns:repeat(2,1fr); gap:8px; width:100%; max-width:320px; max-height:200px; overflow-y:auto; }
+  .contact-chip { padding:8px 12px; background:rgba(0,212,255,0.06); border:1px solid rgba(0,212,255,0.2); border-radius:8px; color:var(--text); font-family:'Rajdhani',sans-serif; font-size:12px; cursor:pointer; transition:all 0.2s; text-align:center; }
+  .contact-chip:active { background:rgba(0,212,255,0.15); border-color:var(--arc); }
+  .settings-panel { position:fixed; inset:0; z-index:8000; background:rgba(0,4,12,0.97); display:flex; flex-direction:column; padding:24px; gap:14px; animation:fadeIn 0.3s ease; overflow-y:auto; }
+  .settings-title { font-family:'Orbitron',sans-serif; font-size:18px; font-weight:900; color:var(--arc); letter-spacing:6px; text-align:center; }
+  .settings-section { font-family:'Share Tech Mono',monospace; font-size:9px; color:var(--dim); letter-spacing:3px; margin-top:8px; }
+  .contact-row { display:flex; align-items:center; gap:8px; background:rgba(0,212,255,0.04); border:1px solid rgba(0,212,255,0.15); border-radius:8px; padding:10px; }
+  .contact-row input { flex:1; background:transparent; border:none; color:var(--text); font-family:'Share Tech Mono',monospace; font-size:11px; outline:none; letter-spacing:0.5px; }
+  .contact-row input::placeholder { color:var(--dim); }
+  .del-btn { background:transparent; border:none; color:var(--red); cursor:pointer; font-size:14px; padding:0 4px; }
+  .add-contact-btn { padding:10px; background:rgba(0,212,255,0.08); border:1px dashed rgba(0,212,255,0.3); border-radius:8px; color:var(--arc); font-family:'Rajdhani',sans-serif; font-size:13px; cursor:pointer; transition:all 0.2s; text-align:center; letter-spacing:1px; }
+  .close-btn { padding:12px; background:rgba(0,212,255,0.1); border:1px solid rgba(0,212,255,0.3); border-radius:8px; color:var(--arc); font-family:'Orbitron',sans-serif; font-size:11px; cursor:pointer; letter-spacing:2px; transition:all 0.2s; }
+  .wake-method-selector { display:flex; gap:8px; width:100%; }
+  .wake-method-btn { flex:1; padding:10px; background:rgba(0,212,255,0.06); border:1px solid rgba(0,212,255,0.2); border-radius:8px; color:var(--dim); font-family:'Share Tech Mono',monospace; font-size:10px; cursor:pointer; transition:all 0.2s; text-align:center; letter-spacing:1px; }
+  .wake-method-btn.selected { background:rgba(0,212,255,0.15); border-color:var(--arc); color:var(--arc); }
+
+  /* ALWAYS-ON GUIDE BANNER */
+  .always-on-banner { background:linear-gradient(135deg,rgba(0,40,70,0.95),rgba(0,20,50,0.98)); border:1px solid rgba(0,212,255,0.3); border-radius:12px; padding:12px 14px; margin:0 4px 8px; font-family:'Share Tech Mono',monospace; font-size:9px; color:var(--dim); letter-spacing:0.5px; line-height:1.8; display:none; }
+  .always-on-banner.show { display:block; }
+  .always-on-banner .aob-title { color:var(--arc); letter-spacing:3px; font-size:10px; margin-bottom:6px; }
+  .always-on-banner .aob-step { color:var(--text); }
+  .always-on-banner .aob-link { color:var(--gold); cursor:pointer; text-decoration:underline; }
+</style>
+</head>
+<body>
+
+<!-- LOADER -->
+<div id="loader">
+  <canvas id="loader-canvas"></canvas>
+  <div class="loader-core">
+    <div class="arc-reactor">
+      <svg viewBox="0 0 100 100">
+        <defs><filter id="glow"><feGaussianBlur stdDeviation="2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+        <g filter="url(#glow)">
+          <circle class="ring1" cx="50" cy="50" r="46" fill="none" stroke="#00d4ff" stroke-width="1" stroke-dasharray="8 3" opacity="0.6"/>
+          <circle class="ring2" cx="50" cy="50" r="38" fill="none" stroke="#00d4ff" stroke-width="1.5" stroke-dasharray="5 5" opacity="0.7"/>
+          <circle class="ring3" cx="50" cy="50" r="34" fill="none" stroke="#00d4ff" stroke-width="1" stroke-dasharray="12 2" opacity="0.5"/>
+          <polygon points="50,20 74,35 74,65 50,80 26,65 26,35" fill="rgba(0,212,255,0.05)" stroke="#00d4ff" stroke-width="1.5" opacity="0.8"/>
+          <polygon points="50,28 68,60 32,60" fill="rgba(0,212,255,0.08)" stroke="#00d4ff" stroke-width="1"/>
+          <circle class="core-pulse" cx="50" cy="50" r="12" fill="rgba(0,212,255,0.3)" stroke="#00d4ff" stroke-width="2"/>
+          <circle cx="50" cy="50" r="6" fill="#00d4ff"/>
+          <circle cx="50" cy="16" r="2" fill="#00d4ff"/>
+          <circle cx="50" cy="84" r="2" fill="#00d4ff"/>
+          <circle cx="16" cy="50" r="2" fill="#00d4ff"/>
+          <circle cx="84" cy="50" r="2" fill="#00d4ff"/>
+        </g>
+      </svg>
+    </div>
+    <div class="loader-title">J.A.R.V.I.S</div>
+    <div class="loader-sub">Just A Rather Very Intelligent System</div>
+    <div class="boot-log" id="boot-log"></div>
+    <div class="progress-bar"><div class="progress-fill" id="prog-fill"></div></div>
+    <div class="progress-pct" id="prog-pct">0%</div>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="app">
+  <canvas id="bg-canvas"></canvas>
+  <div class="scanlines"></div>
+  <div class="vignette"></div>
+  <div class="corner corner-tl"></div><div class="corner corner-tr"></div>
+  <div class="corner corner-bl"></div><div class="corner corner-br"></div>
+
+  <div class="hud-header">
+    <div class="hud-logo">
+      <svg class="mini-reactor" viewBox="0 0 40 40">
+        <defs><filter id="mg"><feGaussianBlur stdDeviation="1" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+        <g filter="url(#mg)">
+          <circle cx="20" cy="20" r="18" fill="none" stroke="#00d4ff" stroke-width="0.5" stroke-dasharray="4 2" style="animation:spin 3s linear infinite;transform-origin:center"/>
+          <polygon points="20,8 30,24 10,24" fill="rgba(0,212,255,0.15)" stroke="#00d4ff" stroke-width="1"/>
+          <circle cx="20" cy="20" r="5" fill="rgba(0,212,255,0.4)" stroke="#00d4ff" stroke-width="1.5"/>
+          <circle cx="20" cy="20" r="2.5" fill="#00d4ff"/>
+        </g>
+      </svg>
+      <div><div class="jarvis-name">JARVIS</div><span class="jarvis-ver">v9.0 · SCRIPTED ENGINE</span></div>
+    </div>
+    <div class="hud-status">
+      <div style="display:flex;align-items:center;gap:6px">
+        <div class="status-dot"><div class="dot"></div>SYSTEMS ONLINE</div>
+        <button onclick="showSettings()" style="background:rgba(0,212,255,0.08);border:1px solid rgba(0,212,255,0.25);border-radius:6px;color:#4a8fa8;font-size:13px;width:26px;height:26px;cursor:pointer">⚙</button>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px">
+        <div class="sys-time" id="hud-time">--:--:--</div>
+        <div class="wake-indicator" id="wake-indicator" onclick="toggleWakeMode()">
+          <div class="wi-dot"></div><span id="wake-label">WAKE: OFF</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="hud-content">
+    <div class="radar-zone">
+      <canvas id="radar-canvas" width="130" height="130"></canvas>
+      <div class="status-ring"><span id="mode-display">READY</span><span class="mode-label" id="mode-sub">AWAITING INPUT</span></div>
+    </div>
+    <div class="always-on-banner" id="always-on-banner">
+      <div class="aob-title">📱 WANT "HEY JARVIS" ALWAYS ON — LIKE GOOGLE ASSISTANT?</div>
+      <div class="aob-step">Android/iPhone browsers BLOCK mic in background — it's a security restriction.</div>
+      <div class="aob-step">✅ <b style="color:var(--arc)">SOLUTION 1 — Install as a PWA App:</b><br>
+        Chrome/Safari → tap Share/Menu → <b style="color:var(--green)">"Add to Home Screen"</b><br>
+        Open from home screen → it runs like an app, mic works better.</div>
+      <div class="aob-step">✅ <b style="color:var(--arc)">SOLUTION 2 — Use Kiwi Browser (Android):</b><br>
+        Install Kiwi Browser → open this page → it allows mic in background.</div>
+      <div class="aob-step">✅ <b style="color:var(--arc)">SOLUTION 3 — Build a native app:</b><br>
+        Wrap this HTML in a WebView Android app (MIT App Inventor or Android Studio).<br>
+        That gives true always-on like Google Assistant.</div>
+      <div style="margin-top:6px;color:var(--gold)">⚠ No browser can match Google's OS-level integration. But the above gets you very close, Sir.</div>
+      <div style="margin-top:6px"><button onclick="document.getElementById('always-on-banner').style.display='none'" style="background:rgba(0,212,255,0.1);border:1px solid rgba(0,212,255,0.3);border-radius:6px;color:var(--arc);font-family:Share Tech Mono,monospace;font-size:9px;padding:4px 10px;cursor:pointer">✕ CLOSE</button></div>
+    </div>
+    <div class="chat-area" id="chat-area"></div>
+  </div>
+
+  <div class="input-zone">
+    <div class="quick-actions">
+      <button class="qa-btn" onclick="quickAct('time')">⏰ TIME</button>
+      <button class="qa-btn" onclick="quickAct('date')">📅 DATE</button>
+      <button class="qa-btn" onclick="quickAct('flip a coin')">🪙 COIN</button>
+      <button class="qa-btn" onclick="quickAct('roll a dice')">🎲 DICE</button>
+      <button class="qa-btn" onclick="quickAct('random number')">🎯 RANDOM</button>
+      <button class="qa-btn" onclick="quickAct('open youtube')">▶ YOUTUBE</button>
+      <button class="qa-btn" onclick="quickAct('open whatsapp')">💬 WHATSAPP</button>
+      <button class="qa-btn" onclick="quickAct('open google maps')">🗺 MAPS</button>
+      <button class="qa-btn" onclick="quickAct('tell me a joke')">😄 JOKE</button>
+      <button class="qa-btn" onclick="quickAct('open spotify')">🎵 MUSIC</button>
+      <button class="qa-btn" onclick="quickAct('open instagram')">📸 INSTAGRAM</button>
+      <button class="qa-btn" onclick="quickAct('open camera')">📷 CAMERA</button>
+      <button class="qa-btn" onclick="quickAct('set timer 5 minutes')">⏱ TIMER 5M</button>
+      <button class="qa-btn" onclick="quickAct('battery status')">🔋 BATTERY</button>
+      <button class="qa-btn" onclick="quickAct('motivate me')">💪 MOTIVATE</button>
+      <button class="qa-btn" onclick="quickAct('open calculator')">🔢 CALC</button>
+      <button class="qa-btn" onclick="quickAct('always on guide')">📱 ALWAYS-ON</button>
+    </div>
+    <div class="input-row">
+      <button class="mic-btn" id="mic-btn" onclick="toggleVoice()">🎙</button>
+      <div class="input-wrap">
+        <input type="text" class="input-field" id="user-input" placeholder="Speak your command, Sir..." autocomplete="off" autocorrect="off" spellcheck="false" onkeydown="handleKey(event)">
+      </div>
+      <button class="send-btn" onclick="sendMessage()">➤</button>
+    </div>
+  </div>
+
+  <div class="voice-wave" id="voice-wave">
+    <div class="wave-bars">
+      <div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>
+      <div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>
+      <div class="wave-bar"></div>
+    </div>
+  </div>
+
+  <div class="metrics-bar">
+    <div class="metric-chip"><span class="metric-val" id="cpu-val">--</span><span class="metric-lbl">CPU</span></div>
+    <div class="metric-chip"><span class="metric-val" id="mem-val">--</span><span class="metric-lbl">MEM</span></div>
+    <div class="metric-chip"><span class="metric-val" id="net-val">--</span><span class="metric-lbl">NET</span></div>
+  </div>
+</div>
+
+<div class="notif" id="notif"></div>
+
+<script>
+// ════════════════════════════════════════════════════
+//  J.A.R.V.I.S v9 — FULLY SCRIPTED ENGINE
+//  No AI API. Sounds via Web Audio API.
+// ════════════════════════════════════════════════════
+
+// ══ AUDIO ENGINE (Web Audio API — zero external files) ══
+let audioCtx = null;
+function getAudio() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return audioCtx;
+}
+
+function playSound(type) {
+  try {
+    const ac = getAudio();
+    if (ac.state === 'suspended') ac.resume();
+
+    if (type === 'wake') {
+      // Ascending electronic chime — like Iron Man suit activating
+      [0, 150, 300].forEach((delay, i) => {
+        const freqs = [440, 660, 880];
+        setTimeout(() => {
+          const osc = ac.createOscillator();
+          const gain = ac.createGain();
+          const filter = ac.createBiquadFilter();
+          filter.type = 'bandpass';
+          filter.frequency.value = freqs[i];
+          osc.connect(filter); filter.connect(gain); gain.connect(ac.destination);
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freqs[i], ac.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(freqs[i] * 1.5, ac.currentTime + 0.15);
+          gain.gain.setValueAtTime(0.3, ac.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + 0.25);
+          osc.start(); osc.stop(ac.currentTime + 0.25);
+        }, delay);
+      });
+    }
+    else if (type === 'listen') {
+      // Soft ping — ready to listen
+      const osc = ac.createOscillator();
+      const gain = ac.createGain();
+      osc.connect(gain); gain.connect(ac.destination);
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(800, ac.currentTime);
+      osc.frequency.linearRampToValueAtTime(1200, ac.currentTime + 0.12);
+      gain.gain.setValueAtTime(0.25, ac.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + 0.3);
+      osc.start(); osc.stop(ac.currentTime + 0.3);
+    }
+    else if (type === 'response') {
+      // Arc reactor hum + click — Jarvis is responding
+      [0, 80].forEach((delay, i) => {
+        const osc = ac.createOscillator();
+        const gain = ac.createGain();
+        osc.connect(gain); gain.connect(ac.destination);
+        osc.type = i === 0 ? 'sawtooth' : 'square';
+        osc.frequency.setValueAtTime(i === 0 ? 200 : 400, ac.currentTime + delay / 1000);
+        gain.gain.setValueAtTime(0.08, ac.currentTime + delay / 1000);
+        gain.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + delay / 1000 + 0.15);
+        osc.start(ac.currentTime + delay / 1000);
+        osc.stop(ac.currentTime + delay / 1000 + 0.15);
+      });
+    }
+    else if (type === 'action') {
+      // Confirmation beep — action executed
+      const osc = ac.createOscillator();
+      const gain = ac.createGain();
+      const osc2 = ac.createOscillator();
+      const gain2 = ac.createGain();
+      osc.connect(gain); gain.connect(ac.destination);
+      osc2.connect(gain2); gain2.connect(ac.destination);
+      osc.type = 'square'; osc.frequency.value = 600;
+      gain.gain.setValueAtTime(0.12, ac.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + 0.1);
+      osc.start(); osc.stop(ac.currentTime + 0.1);
+      osc2.type = 'square'; osc2.frequency.value = 900;
+      gain2.gain.setValueAtTime(0.12, ac.currentTime + 0.12);
+      gain2.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + 0.22);
+      osc2.start(ac.currentTime + 0.12); osc2.stop(ac.currentTime + 0.22);
+    }
+    else if (type === 'error') {
+      // Descending buzz — error
+      const osc = ac.createOscillator();
+      const gain = ac.createGain();
+      osc.connect(gain); gain.connect(ac.destination);
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(300, ac.currentTime);
+      osc.frequency.linearRampToValueAtTime(100, ac.currentTime + 0.3);
+      gain.gain.setValueAtTime(0.2, ac.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + 0.3);
+      osc.start(); osc.stop(ac.currentTime + 0.3);
+    }
+    else if (type === 'timer_done') {
+      // Alert — timer complete
+      [0, 200, 400, 600].forEach(delay => {
+        const osc = ac.createOscillator();
+        const gain = ac.createGain();
+        osc.connect(gain); gain.connect(ac.destination);
+        osc.type = 'sine'; osc.frequency.value = 880;
+        gain.gain.setValueAtTime(0.3, ac.currentTime + delay / 1000);
+        gain.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + delay / 1000 + 0.18);
+        osc.start(ac.currentTime + delay / 1000);
+        osc.stop(ac.currentTime + delay / 1000 + 0.18);
+      });
+    }
+    else if (type === 'boot') {
+      // Boot power-up sweep
+      const osc = ac.createOscillator();
+      const gain = ac.createGain();
+      osc.connect(gain); gain.connect(ac.destination);
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(100, ac.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(800, ac.currentTime + 1.2);
+      gain.gain.setValueAtTime(0.05, ac.currentTime);
+      gain.gain.linearRampToValueAtTime(0.15, ac.currentTime + 0.8);
+      gain.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + 1.4);
+      osc.start(); osc.stop(ac.currentTime + 1.4);
+    }
+  } catch(e) {}
+}
+
+// ══ CONTACTS ══
+function getContacts() { try { return JSON.parse(localStorage.getItem('jarvis_contacts')||'[]'); } catch { return []; } }
+function saveContacts(c) { localStorage.setItem('jarvis_contacts', JSON.stringify(c)); }
+function initContacts() { if(!getContacts().length) saveContacts([{name:'Mom',phone:''},{name:'Dad',phone:''}]); }
+
+// ══ LOADER ══
+const bootLines = [
+  '> Initializing arc reactor core...         [OK]',
+  '> Loading scripted command engine v9...    [OK]',
+  '> Sound synthesis module loaded...         [OK]',
+  '> Wake-word engine initializing...         [OK]',
+  '> Clap detection module loaded...          [OK]',
+  '> Loading WhatsApp deep-link engine...     [OK]',
+  '> Loading voice synthesis module...        [OK]',
+  '> 87 scripted commands registered...       [OK]',
+  '> Syncing contact database...              [OK]',
+  '> All systems nominal. Good day, Sir.'
+];
+let bootIdx=0,progress=0;
+function bootStep() {
+  const log=document.getElementById('boot-log');
+  const fill=document.getElementById('prog-fill');
+  const pct=document.getElementById('prog-pct');
+  if(bootIdx<bootLines.length) {
+    const div=document.createElement('div');
+    div.className='boot-line'; div.textContent=bootLines[bootIdx]; log.appendChild(div);
+    log.scrollTop=log.scrollHeight; bootIdx++;
+    progress=Math.round((bootIdx/bootLines.length)*100);
+    fill.style.width=progress+'%'; pct.textContent=progress+'%';
+    setTimeout(bootStep,bootIdx<bootLines.length-1?260:600);
+  } else { setTimeout(launchApp,700); }
+}
+function launchApp() {
+  const loader=document.getElementById('loader');
+  const app=document.getElementById('app');
+  loader.style.transition='opacity 0.8s,transform 0.8s';
+  loader.style.opacity='0'; loader.style.transform='scale(1.05)';
+  setTimeout(()=>{
+    loader.style.display='none'; app.style.display='flex';
+    app.classList.add('visible');
+    playSound('boot');
+    initApp();
+  },800);
+}
+(function(){
+  const c=document.getElementById('loader-canvas');
+  const ctx=c.getContext('2d'); let W,H,particles=[];
+  function resize(){W=c.width=window.innerWidth;H=c.height=window.innerHeight;}
+  resize(); window.addEventListener('resize',resize);
+  for(let i=0;i<60;i++) particles.push({x:Math.random()*1000,y:Math.random()*1000,vx:(Math.random()-.5)*.3,vy:(Math.random()-.5)*.3,r:Math.random()*1.5+.5,a:Math.random()});
+  function animLoader(){
+    ctx.clearRect(0,0,W,H);ctx.fillStyle='#000';ctx.fillRect(0,0,W,H);
+    particles.forEach(p=>{p.x+=p.vx;p.y+=p.vy;p.a+=.01;if(p.x<0||p.x>W)p.vx*=-1;if(p.y<0||p.y>H)p.vy*=-1;const alpha=(Math.sin(p.a)+1)/2*.4+.1;ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fillStyle=`rgba(0,212,255,${alpha})`;ctx.fill();});
+    ctx.strokeStyle='rgba(0,212,255,0.04)';ctx.lineWidth=1;
+    for(let x=0;x<W;x+=40){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
+    for(let y=0;y<H;y+=40){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+    requestAnimationFrame(animLoader);
+  }
+  animLoader();
+})();
+setTimeout(bootStep,500);
+
+// ══ INIT ══
+function initApp() {
+  initContacts(); startClock(); initBgCanvas(); initRadar(); initMetrics();
+  addWelcomeMessage();
+}
+
+// ══ CLOCK ══
+function startClock() {
+  function update() { const el=document.getElementById('hud-time'); if(el) el.textContent=new Date().toTimeString().slice(0,8); }
+  update(); setInterval(update,1000);
+}
+
+// ══ BG CANVAS ══
+function initBgCanvas() {
+  const c=document.getElementById('bg-canvas'); if(!c) return;
+  const ctx=c.getContext('2d'); let W,H;
+  function resize(){W=c.width=window.innerWidth;H=c.height=window.innerHeight;}
+  resize(); window.addEventListener('resize',resize);
+  const nodes=[];
+  for(let i=0;i<25;i++) nodes.push({x:Math.random()*1000,y:Math.random()*1000,vx:(Math.random()-.5)*.2,vy:(Math.random()-.5)*.2});
+  function drawBg(){
+    ctx.fillStyle='rgba(0,8,20,0.3)';ctx.fillRect(0,0,W,H);
+    nodes.forEach(n=>{n.x+=n.vx;n.y+=n.vy;if(n.x<0||n.x>W)n.vx*=-1;if(n.y<0||n.y>H)n.vy*=-1;});
+    for(let i=0;i<nodes.length;i++) for(let j=i+1;j<nodes.length;j++){
+      const dx=nodes[i].x-nodes[j].x,dy=nodes[i].y-nodes[j].y,dist=Math.sqrt(dx*dx+dy*dy);
+      if(dist<150){ctx.beginPath();ctx.moveTo(nodes[i].x,nodes[i].y);ctx.lineTo(nodes[j].x,nodes[j].y);ctx.strokeStyle=`rgba(0,212,255,${.06*(1-dist/150)})`;ctx.lineWidth=.5;ctx.stroke();}
+    }
+    requestAnimationFrame(drawBg);
+  }
+  drawBg();
+}
+
+// ══ RADAR ══
+function initRadar() {
+  const c=document.getElementById('radar-canvas'); if(!c) return;
+  const ctx=c.getContext('2d'); const W=130,H=130,cx=65,cy=65,R=55;
+  let angle=0,blips=[];
+  function addBlip(){const a=Math.random()*Math.PI*2,r=Math.random()*R*.85;blips.push({x:cx+Math.cos(a)*r,y:cy+Math.sin(a)*r,age:0});if(blips.length>8)blips.shift();}
+  setInterval(addBlip,1200);
+  function drawRadar(){
+    ctx.clearRect(0,0,W,H);
+    for(let r=R/4;r<=R;r+=R/4){ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.strokeStyle='rgba(0,212,255,0.12)';ctx.lineWidth=1;ctx.stroke();}
+    ctx.strokeStyle='rgba(0,212,255,0.1)';ctx.lineWidth=.5;
+    ctx.beginPath();ctx.moveTo(cx-R,cy);ctx.lineTo(cx+R,cy);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(cx,cy-R);ctx.lineTo(cx,cy+R);ctx.stroke();
+    for(let i=0;i<60;i++){const a=angle-(i/60)*1.8;ctx.beginPath();ctx.moveTo(cx,cy);ctx.arc(cx,cy,R,a,a+.08);ctx.closePath();ctx.fillStyle=`rgba(0,212,255,${(1-i/60)*.15})`;ctx.fill();}
+    ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx+Math.cos(angle)*R,cy+Math.sin(angle)*R);ctx.strokeStyle='rgba(0,212,255,0.9)';ctx.lineWidth=1.5;ctx.stroke();
+    blips.forEach(b=>{b.age++;const a=Math.max(0,1-b.age/80);ctx.beginPath();ctx.arc(b.x,b.y,3,0,Math.PI*2);ctx.fillStyle=`rgba(0,255,136,${a})`;ctx.shadowBlur=6;ctx.shadowColor='#00ff88';ctx.fill();ctx.shadowBlur=0;});
+    ctx.beginPath();ctx.arc(cx,cy,3,0,Math.PI*2);ctx.fillStyle='#00d4ff';ctx.shadowBlur=8;ctx.shadowColor='#00d4ff';ctx.fill();ctx.shadowBlur=0;
+    angle+=.025; requestAnimationFrame(drawRadar);
+  }
+  drawRadar();
+}
+
+// ══ METRICS ══
+function initMetrics() {
+  setInterval(()=>{
+    const cpu=Math.floor(20+Math.random()*30);
+    const mem=Math.floor(60+Math.random()*20);
+    const net=Math.random()>.5?'↑':'↓';
+    const cpuEl=document.getElementById('cpu-val');
+    const memEl=document.getElementById('mem-val');
+    const netEl=document.getElementById('net-val');
+    if(cpuEl) cpuEl.textContent=cpu+'%';
+    if(memEl) memEl.textContent=mem+'%';
+    if(netEl) netEl.textContent=net;
+  },2000);
+}
+
+// ══ WELCOME ══
+function addWelcomeMessage() {
+  const h=new Date().getHours();
+  const g=h<12?'Good morning':h<17?'Good afternoon':'Good evening';
+  addMessage('jarvis',`${g}, Sir. J.A.R.V.I.S v9 is fully operational.\n\nI now run on a <b>scripted command engine</b> — no AI needed, zero latency, works offline.\n\n🎙 Say <b>"Hey Jarvis"</b> or <b>"Hello Jarvis"</b> to wake me (enable wake mode first).\n👏 Or <b>double clap</b> to activate.\n\nI can open apps, call contacts, send WhatsApp, set timers, flip coins, tell jokes, get info, and more.\n\nTap <b>📱 ALWAYS-ON</b> in the quick buttons to learn how to use me like Google Assistant.`);
+}
+
+// ══ JOKES DATABASE ══
+const jokes = [
+  "Why don't scientists trust atoms? Because they make up everything.",
+  "I told my wife she was drawing her eyebrows too high. She looked surprised.",
+  "Why do programmers prefer dark mode? Because light attracts bugs.",
+  "I asked the librarian if they had books about paranoia. She whispered: they're right behind you.",
+  "Why did the scarecrow win an award? Because he was outstanding in his field.",
+  "My wife said I had to stop acting like a flamingo. I had to put my foot down.",
+  "Why can't a bicycle stand on its own? Because it's two-tired.",
+  "I told my doctor I broke my arm in two places. He told me to stop going to those places.",
+  "Why did the math book look so sad? Because it had too many problems.",
+  "I'm reading a book about anti-gravity. It's impossible to put down.",
+  "Why did the golfer bring extra pants? In case he got a hole in one.",
+  "What do you call a factory that makes okay products? A satisfactory.",
+  "Why did the invisible man turn down the job offer? Because he couldn't see himself doing it.",
+  "I used to hate facial hair... but then it grew on me.",
+  "Did you hear about the guy who invented Lifesavers? He made a mint."
+];
+
+// ══ MOTIVATIONAL QUOTES ══
+const motives = [
+  "The only way to do great work is to love what you do, Sir.",
+  "In the words of my creator: 'Part of the journey is the end.' Make yours count.",
+  "Success is not final, failure is not fatal: it is the courage to continue that counts.",
+  "The arc reactor was built in a cave with scraps. Imagine what you can build.",
+  "Iron sharpens iron. Keep pushing, Sir.",
+  "You are capable of more than you know. Choose a goal that seems right for you and strive to be the best in the world at it.",
+  "Sir, the strongest steel is forged in the hottest fire.",
+  "Every expert was once a beginner. The only failure is stopping.",
+  "The secret of getting ahead is getting started. Begin.",
+  "You have been assigned this mountain to show others it can be moved."
+];
+
+// ══ FACTS DATABASE ══
+const facts = [
+  "Honey never spoils. Archaeologists have found 3,000-year-old honey in Egyptian tombs that was still edible.",
+  "A day on Venus is longer than a year on Venus.",
+  "Octopuses have three hearts, blue blood, and nine brains — one central and one per arm.",
+  "The shortest war in history lasted only 38–45 minutes, between Britain and Zanzibar in 1896.",
+  "There are more possible iterations of a chess game than atoms in the observable universe.",
+  "Cleopatra lived closer in time to the Moon landing than to the construction of the Great Pyramid.",
+  "The dot over the letter 'i' is called a tittle.",
+  "Wombat poop is cube-shaped. It's the only known animal to produce cubic scat.",
+  "A group of flamingos is called a flamboyance.",
+  "The human brain generates about 20 watts of electrical power — enough to power a dim light bulb."
+];
+
+// ══ RIDDLES ══
+const riddles = [
+  { q: "I speak without a mouth and hear without ears. I have no body but come alive with the wind. What am I?", a: "An echo." },
+  { q: "The more you take, the more you leave behind. What am I?", a: "Footsteps." },
+  { q: "I have cities, but no houses live there. I have mountains, but no trees grow. I have water, but no fish swim. What am I?", a: "A map." },
+  { q: "What has hands but can't clap?", a: "A clock." },
+  { q: "I'm light as a feather, but even the strongest man can't hold me for more than a few minutes. What am I?", a: "Breath." }
+];
+
+// ══ SCRIPTED COMMAND ENGINE ══
+function processCommand(input) {
+  const msg = input.toLowerCase().trim();
+
+  // ── TIME & DATE ──
+  if (/\b(time|what time|current time|time now)\b/.test(msg) && !/timer/.test(msg)) {
+    const now = new Date();
+    const t = now.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+    playSound('response');
+    return card('🕐 CURRENT TIME', t, now.toLocaleDateString('en-US',{weekday:'long'}));
+  }
+  if (/\b(date|today|what.*day|day.*today)\b/.test(msg) && !/update/.test(msg)) {
+    const now = new Date();
+    const d = now.toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+    playSound('response');
+    return card('📅 TODAY', d, `Week ${Math.ceil(now.getDate()/7)} of ${now.toLocaleString('default',{month:'long'})}`);
+  }
+
+  // ── COIN FLIP ──
+  if (/\b(flip|coin|heads|tails)\b/.test(msg)) {
+    const r = Math.random() < .5 ? 'HEADS' : 'TAILS';
+    const e = r === 'HEADS' ? '🟡' : '⚪';
+    playSound('action');
+    return `Quantum probability engine engaged, Sir...\n\n${card('🪙 COIN FLIP', `${e} ${r}`, 'Probability: 50/50 each side')}`;
+  }
+
+  // ── DICE ──
+  const diceM = msg.match(/(?:roll|throw|toss).*?(\d+)?\s*(?:sided\s*)?d?(?:ice|die|dice|d(\d+))/i) ||
+                msg.match(/(\d+)?\s*sided\s*dice/i) || msg.match(/dice|die\b/i);
+  if (diceM) {
+    const sides = parseInt(diceM && (diceM[1]||diceM[2])) || 6;
+    const r = Math.floor(Math.random() * sides) + 1;
+    playSound('action');
+    return `Rolling a D${sides}...\n\n${card(`🎲 D${sides} ROLL`, String(r), `Range: 1 – ${sides}`)}`;
+  }
+
+  // ── RANDOM NUMBER ──
+  const numM = msg.match(/(?:random|pick|generate|choose).*?(?:number|num|integer|no).*?(?:between|from)\s*(\d+)\s*(?:and|to|-)\s*(\d+)/i);
+  if (numM) {
+    const min = parseInt(numM[1]), max = parseInt(numM[2]);
+    const r = Math.floor(Math.random() * (max - min + 1)) + min;
+    playSound('action');
+    return `Quantum number generated, Sir...\n\n${card(`🎯 RANDOM: ${min}–${max}`, String(r), 'Uniform distribution')}`;
+  }
+  if (/\b(random\s*number|pick\s*a\s*number|random\s*no)\b/.test(msg)) {
+    const r = Math.floor(Math.random() * 100) + 1;
+    playSound('action');
+    return `${card('🎯 RANDOM (1–100)', String(r), 'Tap "random number between X and Y" for custom range')}`;
+  }
+
+  // ── MAGIC 8 BALL ──
+  if (/\b(8.?ball|magic|will i|should i|am i|is it|will.*happen)\b/.test(msg)) {
+    const answers = ['It is certain','It is decidedly so','Without a doubt','Yes, definitely','As I see it, yes','Most likely','Outlook good','Yes','Signs point to yes','Reply hazy, try again','Ask again later','Cannot predict now',"Don't count on it",'My reply is no','Outlook not so good','Very doubtful'];
+    const r = answers[Math.floor(Math.random() * answers.length)];
+    playSound('response');
+    return `Consulting the probability matrix, Sir...\n\n${card('🎱 MAGIC 8-BALL', r.toUpperCase(), '')}`;
+  }
+
+  // ── TIMER ──
+  const timerM = msg.match(/(?:set\s*a?\s*)?timer\s*(?:for\s*)?(\d+)\s*(second|sec|minute|min|hour|hr)/i) ||
+                 msg.match(/(\d+)\s*(second|sec|minute|min|hour|hr)\s*timer/i);
+  if (timerM) {
+    const val = parseInt(timerM[1]);
+    const unit = timerM[2].toLowerCase();
+    let secs = unit.startsWith('h') ? val * 3600 : unit.startsWith('m') ? val * 60 : val;
+    const label = `${val} ${unit}${val>1?'s':''}`;
+    playSound('action');
+    startInPageTimer(secs, label);
+    return `Timer set for ${label}, Sir.\n\n${timerHTML(secs)}`;
+  }
+
+  // ── ALARM ──
+  if (/\b(alarm|wake me|remind me)\b/.test(msg)) {
+    const timeM = msg.match(/(\d{1,2})(?::(\d{2}))?\s*(am|pm)?/i);
+    if (timeM) {
+      const hr = parseInt(timeM[1]);
+      const mn = parseInt(timeM[2]||0);
+      const ampm = timeM[3];
+      const label = `${hr}:${String(mn).padStart(2,'0')}${ampm?ampm.toUpperCase():''}`;
+      playSound('action');
+      return `Alarm noted for ${label}, Sir. I'll remind you then.\n\n<div class="result-card"><div class="card-title">⏰ ALARM SET</div><div class="card-val">${label}</div></div>\n\n<span style="font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--dim)">Note: For a persistent alarm that works when screen is off, use your phone's Clock app or tap below.</span><div class="action-btn-row"><button class="action-btn" onclick="window.open('intent://#Intent;scheme=alarm;end','_blank') || window.open('clock','_blank')">⏰ Open Clock App</button></div>`;
+    }
+    return `Please specify a time for the alarm, Sir. For example: "Set alarm for 7 AM"`;
+  }
+
+  // ── OPEN APPS ──
+  const appMap = {
+    youtube: ['youtube','yt'], spotify: ['spotify'], instagram: ['instagram','insta'],
+    whatsapp: ['whatsapp','whats app','wa'], maps: ['maps','google maps','navigation'],
+    gmail: ['gmail','email','mail'], chrome: ['chrome','browser'],
+    calculator: ['calculator','calc','maths'], camera: ['camera','photo'],
+    settings: ['settings','setting'], twitter: ['twitter','x.com'],
+    facebook: ['facebook','fb'], snapchat: ['snapchat'],
+    netflix: ['netflix'], amazon: ['amazon'],
+    linkedin: ['linkedin'], tiktok: ['tiktok'],
+    reddit: ['reddit'], telegram: ['telegram'],
+    google: ['google','search google'],
+    news: ['news','latest news']
+  };
+  const appURLs = {
+    youtube: 'https://youtube.com', spotify: 'https://open.spotify.com',
+    instagram: 'https://instagram.com', whatsapp: 'https://wa.me/',
+    maps: 'https://maps.google.com', gmail: 'https://mail.google.com',
+    chrome: 'googlechrome://', calculator: 'calculator://',
+    camera: null, settings: null,
+    twitter: 'https://x.com', facebook: 'https://facebook.com',
+    snapchat: 'https://snapchat.com', netflix: 'https://netflix.com',
+    amazon: 'https://amazon.com', linkedin: 'https://linkedin.com',
+    tiktok: 'https://tiktok.com', reddit: 'https://reddit.com',
+    telegram: 'https://web.telegram.org', google: 'https://google.com',
+    news: 'https://news.google.com'
+  };
+  for (const [app, keywords] of Object.entries(appMap)) {
+    if (keywords.some(kw => msg.includes(kw)) && /\b(open|launch|start|go to|show|play)\b/.test(msg) || msg === kw) {
+      if (app === 'camera') { playSound('action'); return `Opening camera, Sir.\n\n<div class="action-btn-row"><button class="action-btn" onclick="openCamera()">📷 Take Photo</button></div>`; }
+      if (app === 'settings') { playSound('action'); return `Opening device settings, Sir.\n\n<div class="action-btn-row"><button class="action-btn" onclick="window.open('app-settings:','_blank')">⚙ Open Settings</button></div>`; }
+      const url = appURLs[app];
+      if (url) {
+        playSound('action');
+        setTimeout(() => window.open(url, '_blank'), 500);
+        return `Launching ${app.charAt(0).toUpperCase()+app.slice(1)}, Sir.\n\n${actionBtn(`🚀 Open ${app.charAt(0).toUpperCase()+app.slice(1)}`, url)}`;
+      }
+    }
+  }
+  // Catch just "open WhatsApp" / "open youtube" etc without open keyword
+  for (const [app, keywords] of Object.entries(appMap)) {
+    if (keywords.some(kw => msg === kw || msg === 'open '+kw)) {
+      const url = appURLs[app];
+      if (url && app !== 'camera' && app !== 'settings') {
+        playSound('action');
+        setTimeout(() => window.open(url, '_blank'), 500);
+        return `Launching ${app.charAt(0).toUpperCase()+app.slice(1)}, Sir.\n\n${actionBtn(`🚀 Open ${app.charAt(0).toUpperCase()+app.slice(1)}`, url)}`;
+      }
+    }
+  }
+
+  // ── WHATSAPP MESSAGE ──
+  const waM = msg.match(/(?:send|whatsapp|message|text|msg)\s+(?:to\s+)?(.+?)\s+(?:saying|say|:|message:)\s+"?(.+)"?$/i) ||
+              msg.match(/(?:whatsapp|message|text)\s+(.+?)\s+(.+)/i);
+  if (waM && /whatsapp|send.*saying|message.*saying|text.*saying/.test(msg)) {
+    const contactName = waM[1].trim();
+    const message = waM[2].trim();
+    const contacts = getContacts();
+    const found = contacts.find(c => c.name.toLowerCase().includes(contactName.toLowerCase()));
+    if (found && found.phone) {
+      const phone = found.phone.replace(/[^0-9]/g, '');
+      const url = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+      playSound('action');
+      setTimeout(() => window.open(url, '_blank'), 600);
+      return `Sending WhatsApp to ${found.name}, Sir...\n\n<div style="margin:6px 0"><span class="res-action">💬 TO: ${found.name.toUpperCase()}</span><br><span style="font-family:'Share Tech Mono',monospace;font-size:10px;color:#c8f0ff;opacity:0.7">"${message}"</span>${actionBtn('💬 Open WhatsApp', url)}</div>`;
+    }
+    return `${contactName} isn't in my contact list with a saved number, Sir. Please add them in ⚙ Settings.\n\n${actionBtn('💬 Open WhatsApp Manually', 'https://wa.me/')}`;
+  }
+
+  // ── CALL ──
+  const callM = msg.match(/(?:call|ring|phone|dial)\s+(.+)/i);
+  if (callM) {
+    const contactName = callM[1].trim();
+    const contacts = getContacts();
+    const found = contacts.find(c => c.name.toLowerCase().includes(contactName.toLowerCase()));
+    if (found && found.phone) {
+      playSound('action');
+      return `Initiating call to ${found.name}, Sir.\n\n<div class="action-btn-row"><button class="action-btn" onclick="window.location.href='tel:${found.phone}'">📞 Call ${found.name}</button></div>`;
+    }
+    if (/\d{7,}/.test(contactName)) {
+      const num = contactName.replace(/[^0-9+]/g, '');
+      playSound('action');
+      return `Dialing ${num}, Sir.\n\n<div class="action-btn-row"><button class="action-btn" onclick="window.location.href='tel:${num}'">📞 Dial ${num}</button></div>`;
+    }
+    return `I couldn't find ${contactName} in my contact database, Sir. Add their number in ⚙ Settings, or say a phone number directly.`;
+  }
+
+  // ── NAVIGATION ──
+  const navM = msg.match(/(?:navigate|directions|take me|go to|drive to|find|show)\s+(?:to\s+)?(?:the\s+)?(.+)/i);
+  if (navM && /navigate|direction|take me|drive to/.test(msg)) {
+    const dest = navM[1].trim();
+    const url = `https://maps.google.com/?q=${encodeURIComponent(dest)}`;
+    playSound('action');
+    setTimeout(() => window.open(url, '_blank'), 500);
+    return `Plotting route to ${dest}, Sir.\n\n${actionBtn('🗺 Open in Maps', url)}`;
+  }
+
+  // ── SEARCH ──
+  const searchM = msg.match(/(?:search|google|look up|find|what is|who is|how much|how many|define)\s+(?:for\s+)?(.+)/i);
+  if (searchM && /search|google|look up/.test(msg)) {
+    const q = searchM[1].trim();
+    const url = `https://www.google.com/search?q=${encodeURIComponent(q)}`;
+    playSound('action');
+    setTimeout(() => window.open(url, '_blank'), 500);
+    return `Searching for "${q}", Sir.\n\n${actionBtn('🌐 View Results', url)}`;
+  }
+
+  // ── WEATHER ──
+  if (/\b(weather|temperature|rain|forecast|hot|cold outside)\b/.test(msg)) {
+    playSound('action');
+    const url = 'https://www.google.com/search?q=weather+today';
+    setTimeout(() => window.open(url, '_blank'), 500);
+    return `Pulling current weather data, Sir.\n\n${actionBtn('🌤 View Weather', url)}`;
+  }
+
+  // ── NEWS ──
+  if (/\b(news|headlines|latest|current events)\b/.test(msg)) {
+    playSound('action');
+    const url = 'https://news.google.com';
+    setTimeout(() => window.open(url, '_blank'), 500);
+    return `Here are the latest global dispatches, Sir.\n\n${actionBtn('📰 Read News', url)}`;
+  }
+
+  // ── BATTERY ──
+  if (/\b(battery|charge|power level|power status)\b/.test(msg)) {
+    if (navigator.getBattery) {
+      navigator.getBattery().then(b => {
+        const pct = Math.round(b.level * 100);
+        const status = b.charging ? '⚡ CHARGING' : pct > 50 ? '🟢 GOOD' : pct > 20 ? '🟡 LOW' : '🔴 CRITICAL';
+        addMessage('jarvis', `Battery status, Sir:\n\n${card('🔋 BATTERY LEVEL', pct+'%', `Status: ${status}`)}`);
+        playSound('response');
+      });
+      return `Scanning power cells, Sir...`;
+    }
+    return `Battery API not available in this browser, Sir. Check your status bar.`;
+  }
+
+  // ── CALCULATOR / MATH ──
+  const mathM = msg.match(/(?:calculate|compute|what(?:'s|\s+is)\s+)?(-?\d+(?:\.\d+)?)\s*([+\-×x*÷\/])\s*(-?\d+(?:\.\d+)?)/);
+  if (mathM) {
+    const a = parseFloat(mathM[1]), op = mathM[2], b = parseFloat(mathM[3]);
+    let r;
+    if (op === '+') r = a + b;
+    else if (op === '-') r = a - b;
+    else if (op === '*'||op === 'x'||op === '×') r = a * b;
+    else if (op === '/'||op === '÷') r = b !== 0 ? a / b : 'ERROR (÷0)';
+    playSound('response');
+    return card('🔢 CALCULATION', String(r), `${a} ${op} ${b}`);
+  }
+  if (/\b(calculator|calc|maths|math)\b/.test(msg)) {
+    playSound('action');
+    return `Opening calculator, Sir.\n\n${actionBtn('🔢 Open Calculator', 'calculator://')}\n\nOr just type an equation like "5 + 3" and I'll compute it instantly.`;
+  }
+
+  // ── JOKES ──
+  if (/\b(joke|funny|make me laugh|humor|humour|laugh)\b/.test(msg)) {
+    const joke = jokes[Math.floor(Math.random() * jokes.length)];
+    playSound('response');
+    return `If you insist, Sir...\n\n<div class="result-card"><div class="card-title">😄 JARVIS HUMOR MODULE</div><div style="font-size:13px;color:var(--text);line-height:1.6;margin-top:4px">${joke}</div></div>`;
+  }
+
+  // ── MOTIVATE ──
+  if (/\b(motivat|inspire|quote|encouragement|push me|pep talk)\b/.test(msg)) {
+    const m = motives[Math.floor(Math.random() * motives.length)];
+    playSound('response');
+    return `<div class="result-card"><div class="card-title">💪 STARK INSPIRATION MODULE</div><div style="font-size:13px;color:var(--arc);line-height:1.6;margin-top:4px;font-style:italic">"${m}"</div></div>`;
+  }
+
+  // ── FACTS ──
+  if (/\b(fact|did you know|tell me something|interesting|trivia)\b/.test(msg)) {
+    const f = facts[Math.floor(Math.random() * facts.length)];
+    playSound('response');
+    return `<div class="result-card"><div class="card-title">🧠 KNOWLEDGE DATABASE</div><div style="font-size:12px;color:var(--text);line-height:1.6;margin-top:4px">${f}</div></div>`;
+  }
+
+  // ── RIDDLE ──
+  if (/\b(riddle|brain teaser|puzzle)\b/.test(msg)) {
+    const rd = riddles[Math.floor(Math.random() * riddles.length)];
+    playSound('response');
+    return `<div class="result-card"><div class="card-title">🧩 RIDDLE MODULE</div><div style="font-size:12px;color:var(--text);line-height:1.6;margin-top:4px">${rd.q}</div></div>\n\n<span style="font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--dim)">Say "answer" or "what's the answer" to reveal it.</span>`;
+  }
+  if (/\b(answer|what.?s the answer|reveal)\b/.test(msg)) {
+    playSound('response');
+    const rd = riddles[Math.floor(Math.random() * riddles.length)];
+    return `The answer to the last riddle: <b style="color:var(--arc)">${rd.a}</b>`;
+  }
+
+  // ── ROCK PAPER SCISSORS ──
+  if (/\b(rock|paper|scissors|rps)\b/.test(msg)) {
+    const choices = ['Rock','Paper','Scissors'];
+    const jarvis = choices[Math.floor(Math.random() * 3)];
+    const user = msg.includes('rock') ? 'Rock' : msg.includes('paper') ? 'Paper' : msg.includes('scissors') ? 'Scissors' : null;
+    if (!user) return `Say "rock", "paper", or "scissors" to play against me, Sir.`;
+    let result;
+    if (user === jarvis) result = "It's a draw.";
+    else if ((user==='Rock'&&jarvis==='Scissors')||(user==='Paper'&&jarvis==='Rock')||(user==='Scissors'&&jarvis==='Paper')) result = `You win this round, Sir. Well played.`;
+    else result = `I win, Sir. ${jarvis} beats ${user}. Better luck next time.`;
+    playSound('action');
+    return `<div class="result-card"><div class="card-title">✊ ROCK PAPER SCISSORS</div><div style="font-size:13px;color:var(--text);margin-top:4px">You: <b style="color:var(--gold)">${user}</b> | J.A.R.V.I.S: <b style="color:var(--arc)">${jarvis}</b></div><div style="margin-top:6px;color:var(--green)">${result}</div></div>`;
+  }
+
+  // ── ALWAYS-ON GUIDE ──
+  if (/\b(always.?on|background|lock screen|like google|like siri|persistent|stay on)\b/.test(msg)) {
+    document.getElementById('always-on-banner').style.display = 'block';
+    document.getElementById('always-on-banner').scrollIntoView({behavior:'smooth'});
+    playSound('response');
+    return `I've shown you the "Always-On" setup guide above, Sir. The short version:\n\n<b style="color:var(--arc)">1.</b> Add this page to your Home Screen (PWA install)\n<b style="color:var(--arc)">2.</b> Keep the app open and screen on for wake word detection\n<b style="color:var(--arc)">3.</b> For true background detection, a native app wrapper is needed\n\nBrowsers cannot access the mic in full background/lock screen for security reasons, Sir.`;
+  }
+
+  // ── HELP / COMMANDS ──
+  if (/\b(help|what can you do|commands|capabilities|features)\b/.test(msg)) {
+    playSound('response');
+    return `Here's what I can do, Sir:\n\n<div class="result-card"><div class="card-title">⚡ JARVIS COMMAND LIST</div><div style="font-size:11px;color:var(--text);line-height:2">
+⏰ Time / Date<br>
+🪙 Flip a coin<br>
+🎲 Roll dice / D20<br>
+🎯 Random number between X and Y<br>
+🎱 Magic 8-ball (ask any yes/no question)<br>
+✊ Rock, paper, scissors<br>
+⏱ Set timer for [N] minutes/seconds<br>
+⏰ Set alarm for [time]<br>
+📞 Call [contact name]<br>
+💬 Send WhatsApp to [name] saying [message]<br>
+🗺 Navigate to [place]<br>
+🔍 Search [anything]<br>
+🌤 Weather<br>
+📰 News<br>
+🔋 Battery status<br>
+🔢 Calculate [math expression]<br>
+📱 Open YouTube / Spotify / Instagram / WhatsApp / Maps / Gmail...<br>
+📷 Open camera<br>
+😄 Tell me a joke<br>
+💪 Motivate me<br>
+🧠 Tell me a fact<br>
+🧩 Give me a riddle<br>
+📱 Always-on guide
+</div></div>`;
+  }
+
+  // ── GREETINGS ──
+  if (/^(hi|hello|hey|sup|what.?s up|howdy|good morning|good evening|good afternoon)\b/.test(msg)) {
+    const h = new Date().getHours();
+    const g = h<12?'Good morning':h<17?'Good afternoon':'Good evening';
+    playSound('response');
+    return `${g}, Sir. All systems nominal and ready for your commands. How may I serve you today?`;
+  }
+
+  // ── JARVIS STATUS ──
+  if (/\b(status|systems|online|how are you|are you there|you there)\b/.test(msg)) {
+    playSound('response');
+    return `All systems fully operational, Sir. Arc reactor at 100% capacity. Scripted command engine loaded with ${87} commands. Standing by.`;
+  }
+
+  // ── THANKS ──
+  if (/\b(thank|thanks|ty|cheers|good job|well done|nice)\b/.test(msg)) {
+    playSound('response');
+    const replies = [
+      `At your service, Sir. Always.`,
+      `Happy to assist, Sir. That's what I'm here for.`,
+      `The pleasure is mine, Sir. Anything else?`,
+      `Efficiency is my primary directive, Sir.`
+    ];
+    return replies[Math.floor(Math.random() * replies.length)];
+  }
+
+  // ── GOODBYE ──
+  if (/\b(bye|goodbye|exit|shut down|power off|goodnight|good night)\b/.test(msg)) {
+    playSound('response');
+    return `Acknowledged, Sir. Entering standby mode. Have a productive day. J.A.R.V.I.S. signing off.`;
+  }
+
+  // ── CAMERA ──
+  if (/\b(camera|photo|picture|selfie|snapshot)\b/.test(msg)) {
+    playSound('action');
+    return `Opening camera, Sir.\n\n<div class="action-btn-row"><button class="action-btn" onclick="openCamera()">📷 Open Camera</button></div>`;
+  }
+
+  // ── WHO ARE YOU ──
+  if (/\b(who are you|what are you|your name|introduce yourself|jarvis who)\b/.test(msg)) {
+    playSound('response');
+    return `I am J.A.R.V.I.S — Just A Rather Very Intelligent System, Sir. I am a fully local, offline voice assistant modelled after Tony Stark's AI. I run on a scripted command engine with zero latency — no internet required for most functions.`;
+  }
+
+  // ── UNKNOWN — fallback ──
+  playSound('error');
+  const fallbacks = [
+    `I don't have a scripted response for that, Sir. Try asking for something specific — say "help" to see all my commands.`,
+    `That command isn't in my database, Sir. Say "help" to see what I can do.`,
+    `Apologies, Sir. That falls outside my scripted capabilities. Say "help" for a full list of commands.`,
+    `I'm a scripted assistant, Sir — I don't have that command loaded. Try: time, coin flip, joke, open YouTube, set timer...`
+  ];
+  return fallbacks[Math.floor(Math.random() * fallbacks.length)];
+}
+
+// ── HTML HELPERS ──
+function card(title, val, sub) {
+  return `<div class="result-card"><div class="card-title">${title}</div><div class="card-val">${val}</div>${sub?`<div style="color:var(--dim);font-family:'Share Tech Mono',monospace;font-size:10px;margin-top:4px">${sub}</div>`:''}</div>`;
+}
+function actionBtn(label, url) {
+  return `<div class="action-btn-row"><button class="action-btn" onclick="window.open('${url}','_blank')">${label}</button></div>`;
+}
+function timerHTML(secs) {
+  return `<div style="margin:6px 0"><span class="res-action">⏱ COUNTDOWN ACTIVE</span><div id="timer-display-${secs}" style="font-family:'Orbitron',monospace;font-size:22px;color:var(--arc);margin-top:4px;text-shadow:0 0 10px var(--arc)">${formatTime(secs)}</div></div>`;
+}
+function formatTime(s) { const m=Math.floor(s/60),sec=s%60; return m>0?`${m}:${String(sec).padStart(2,'0')}`:s+'s'; }
+
+// ── TIMER ENGINE ──
+function startInPageTimer(totalSecs, label) {
+  let remaining = totalSecs;
+  const id = `timer-display-${totalSecs}`;
+  const interval = setInterval(() => {
+    remaining--;
+    const el = document.getElementById(id);
+    if (el) {
+      if (remaining > 0) {
+        el.textContent = formatTime(remaining);
+      } else {
+        clearInterval(interval);
+        el.textContent = 'DONE ✓';
+        el.style.color = 'var(--green)';
+        showNotif('⏱ Timer complete, Sir!');
+        speak('Timer complete, Sir.');
+        playSound('timer_done');
+      }
+    } else { clearInterval(interval); }
+  }, 1000);
+}
+
+function openCamera() {
+  const input = document.createElement('input');
+  input.type = 'file'; input.accept = 'image/*'; input.capture = 'environment';
+  input.click();
+}
+
+// ══ SEND MESSAGE ══
+function sendMessage(text) {
+  const input = document.getElementById('user-input');
+  const msg = text || (input ? input.value.trim() : '');
+  if (!msg) return;
+  if (input) input.value = '';
+
+  setMode('PROCESSING', 'ANALYZING INPUT');
+  addMessage('user', msg);
+
+  // Simulate brief processing delay
+  setTimeout(() => {
+    const response = processCommand(msg);
+    addMessage('jarvis', response);
+    setMode('READY', 'AWAITING INPUT');
+  }, 200);
+}
+
+function quickAct(cmd) { sendMessage(cmd); }
+function handleKey(e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } }
+
+// ══ MODE DISPLAY ══
+function setMode(main, sub) {
+  const m = document.getElementById('mode-display');
+  const s = document.getElementById('mode-sub');
+  if (m) m.textContent = main;
+  if (s) s.textContent = sub;
+}
+
+// ══ CHAT ══
+function addMessage(role, text, extraHTML = '') {
+  const area = document.getElementById('chat-area');
+  if (!area) return;
+  const div = document.createElement('div');
+  div.className = 'msg ' + (role === 'user' ? 'user' : '');
+  const isJarvis = role === 'jarvis';
+  div.innerHTML = `
+    <div class="msg-avatar ${isJarvis?'':'user-av'}">${isJarvis?'⚡':'👤'}</div>
+    <div class="msg-bubble ${isJarvis?'jarvis-bubble':'user-bubble'}">
+      <div class="msg-label">${isJarvis?'J.A.R.V.I.S':'YOU'}</div>
+      <div>${text.replace(/\n/g,'<br>')}</div>
+      ${extraHTML}
+    </div>`;
+  area.appendChild(div);
+  area.scrollTop = area.scrollHeight;
+  if (isJarvis) {
+    const plain = text.replace(/<[^>]+>/g,'').replace(/\n/g,' ');
+    speak(plain.slice(0, 200));
+  }
+}
+
+// ══ TTS ══
+function speak(text) {
+  if (!window.speechSynthesis) return;
+  window.speechSynthesis.cancel();
+  const utt = new SpeechSynthesisUtterance(text);
+  utt.rate = 0.92; utt.pitch = 0.82; utt.volume = 0.8;
+  const voices = window.speechSynthesis.getVoices();
+  const pref = voices.find(v => v.name.includes('Daniel') || v.name.includes('Google UK English Male') || v.name.includes('Google UK'));
+  if (pref) utt.voice = pref;
+  window.speechSynthesis.speak(utt);
+}
+if (window.speechSynthesis) window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
+
+// ══ NOTIFICATIONS ══
+let notifTimeout = null;
+function showNotif(msg) {
+  const el = document.getElementById('notif');
+  if (!el) return;
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(notifTimeout);
+  notifTimeout = setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+// ══════════════════════════════════════════════
+//  WAKE WORD + CLAP DETECTION ENGINE
+// ══════════════════════════════════════════════
+let wakeMode = false;
+let wakeMethod = 'both';
+let backgroundRecognition = null;
+let clapAudioCtx = null;
+let clapAnalyser = null;
+let wakeStream = null;
+let wakeActive = false;
+let isListening = false;
+let recognition = null;
+const CLAP_WINDOW_MS = 800;
+const CLAP_THRESHOLD = 130;
+let lastClapTime = 0, clapCooldown = false;
+
+function toggleWakeMode() {
+  if (wakeMode) stopWakeMode(); else startWakeMode();
+}
+
+async function startWakeMode() {
+  wakeMode = true;
+  updateWakeIndicator();
+  showNotif('🟢 Wake mode ON — say "Hey Jarvis" or clap twice');
+  if (wakeMethod !== 'clap') startWakeWordListener();
+  if (wakeMethod !== 'voice') await startClapDetector();
+}
+
+function stopWakeMode() {
+  wakeMode = false;
+  updateWakeIndicator();
+  showNotif('🔴 Wake mode OFF');
+  if (backgroundRecognition) { try { backgroundRecognition.stop(); } catch(e){} backgroundRecognition = null; }
+  stopClapDetector();
+}
+
+function updateWakeIndicator() {
+  const ind = document.getElementById('wake-indicator');
+  const lbl = document.getElementById('wake-label');
+  if (ind) ind.classList.toggle('active', wakeMode);
+  if (lbl) lbl.textContent = wakeMode ? 'WAKE: ON' : 'WAKE: OFF';
+}
+
+function startWakeWordListener() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) { showNotif('⚠ Voice wake not supported on this browser'); return; }
+  function listen() {
+    if (!wakeMode) return;
+    backgroundRecognition = new SR();
+    backgroundRecognition.continuous = false;
+    backgroundRecognition.interimResults = true;
+    backgroundRecognition.lang = 'en-US';
+    backgroundRecognition.onresult = (e) => {
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const t = e.results[i][0].transcript.toLowerCase();
+        if (t.includes('hello jarvis') || t.includes('hey jarvis') || t.includes('ok jarvis') || t.includes('jarvis')) {
+          onWakeTriggered('voice'); return;
+        }
+      }
+    };
+    backgroundRecognition.onend = () => { if (wakeMode && !isListening) setTimeout(() => { if (wakeMode) listen(); }, 1500); };
+    backgroundRecognition.onerror = (e) => { if (e.error !== 'no-speech' && e.error !== 'aborted') console.warn('Wake:', e.error); setTimeout(() => { if (wakeMode) listen(); }, 2000); };
+    try { backgroundRecognition.start(); } catch(e) {}
+  }
+  listen();
+}
+
+async function startClapDetector() {
+  try {
+    wakeStream = await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false},video:false});
+    clapAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    clapAnalyser = clapAudioCtx.createAnalyser();
+    clapAnalyser.fftSize = 512;
+    clapAnalyser.smoothingTimeConstant = 0.1;
+    const source = clapAudioCtx.createMediaStreamSource(wakeStream);
+    source.connect(clapAnalyser);
+    detectClaps();
+    showNotif('👏 Clap detector active');
+  } catch(e) {
+    showNotif('⚠ Mic access denied — clap detection unavailable');
+  }
+}
+
+function stopClapDetector() {
+  if (wakeStream) { wakeStream.getTracks().forEach(t => t.stop()); wakeStream = null; }
+  if (clapAudioCtx) { try { clapAudioCtx.close(); } catch(e){} clapAudioCtx = null; }
+  clapAnalyser = null;
+}
+
+function detectClaps() {
+  if (!clapAnalyser || !wakeMode) return;
+  const data = new Uint8Array(clapAnalyser.frequencyBinCount);
+  clapAnalyser.getByteFrequencyData(data);
+  let peak = 0;
+  for (let i = 0; i < data.length; i++) if (data[i] > peak) peak = data[i];
+  const now = Date.now();
+  if (peak > CLAP_THRESHOLD && !clapCooldown) {
+    clapCooldown = true;
+    setTimeout(() => { clapCooldown = false; }, 250);
+    if (now - lastClapTime < CLAP_WINDOW_MS && lastClapTime > 0) {
+      lastClapTime = 0; onWakeTriggered('clap');
+    } else { lastClapTime = now; }
+  }
+  requestAnimationFrame(detectClaps);
+}
+
+function onWakeTriggered(method) {
+  if (isListening || wakeActive) return;
+  wakeActive = true;
+  setTimeout(() => { wakeActive = false; }, 3000);
+  playSound('wake');
+  document.body.classList.add('wake-flash');
+  setTimeout(() => document.body.classList.remove('wake-flash'), 800);
+  showNotif(method === 'clap' ? '👏 Double clap — JARVIS activated!' : '🎙 "Hey Jarvis" detected!');
+  setMode('ACTIVATED', 'WAKE TRIGGERED');
+  if (backgroundRecognition) { try { backgroundRecognition.stop(); } catch(e){} }
+  setTimeout(() => {
+    speak('Yes Sir, listening.');
+    playSound('listen');
+    setTimeout(() => startVoice(), 600);
+  }, 300);
+}
+
+// ══ VOICE INPUT ══
+function toggleVoice() {
+  if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) { showNotif('⚠ Voice not supported'); return; }
+  if (isListening) { stopVoice(); return; }
+  startVoice();
+}
+
+function startVoice() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) { showNotif('⚠ Voice not supported'); return; }
+  if (backgroundRecognition) { try { backgroundRecognition.stop(); } catch(e){} }
+  recognition = new SR();
+  recognition.continuous = false;
+  recognition.interimResults = false;
+  recognition.lang = 'en-US';
+  recognition.onstart = () => {
+    isListening = true;
+    playSound('listen');
+    document.getElementById('mic-btn').classList.add('listening');
+    document.getElementById('voice-wave').classList.add('active');
+    setMode('LISTENING', 'VOICE INPUT ACTIVE');
+    showNotif('🎙 Listening...');
+  };
+  recognition.onresult = (e) => {
+    let text = e.results[0][0].transcript;
+    text = text.replace(/^(hello jarvis|hey jarvis|ok jarvis|jarvis[,.]?\s*)/i, '').trim();
+    if (!text) { stopVoice(); return; }
+    const input = document.getElementById('user-input');
+    if (input) input.value = text;
+    stopVoice();
+    sendMessage(text);
+  };
+  recognition.onerror = () => { stopVoice(); showNotif('⚠ Voice recognition error'); };
+  recognition.onend = () => {
+    stopVoice();
+    if (wakeMode && wakeMethod !== 'clap') setTimeout(() => { if (wakeMode) startWakeWordListener(); }, 1000);
+  };
+  recognition.start();
+}
+
+function stopVoice() {
+  isListening = false;
+  if (recognition) { try { recognition.stop(); } catch(e){} }
+  const mb = document.getElementById('mic-btn');
+  const vw = document.getElementById('voice-wave');
+  if (mb) mb.classList.remove('listening');
+  if (vw) vw.classList.remove('active');
+  const md = document.getElementById('mode-display');
+  if (md && md.textContent === 'LISTENING') setMode('READY', 'AWAITING INPUT');
+}
+
+// ══ SETTINGS ══
+function showSettings() {
+  const old = document.getElementById('settings-panel-el');
+  if (old) old.remove();
+  const panel = document.createElement('div');
+  panel.id = 'settings-panel-el';
+  panel.className = 'settings-panel';
+  panel.innerHTML = `
+    <div class="settings-title">⚙ SETTINGS</div>
+    <div class="settings-section">WAKE MODE METHOD</div>
+    <div class="wake-method-selector">
+      <button class="wake-method-btn ${wakeMethod==='voice'?'selected':''}" onclick="setWakeMethod('voice',this)">🎙 VOICE<br><span style="font-size:8px;opacity:0.7">Hey Jarvis</span></button>
+      <button class="wake-method-btn ${wakeMethod==='clap'?'selected':''}" onclick="setWakeMethod('clap',this)">👏 CLAP<br><span style="font-size:8px;opacity:0.7">Double clap</span></button>
+      <button class="wake-method-btn ${wakeMethod==='both'?'selected':''}" onclick="setWakeMethod('both',this)">⚡ BOTH<br><span style="font-size:8px;opacity:0.7">Recommended</span></button>
+    </div>
+    <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--dim);letter-spacing:1px">
+      Wake: ${wakeMode?'<span style="color:var(--green)">ACTIVE</span>':'<span style="color:var(--red)">OFF</span>'} — toggle with the button in the header
+    </div>
+    <div class="settings-section">CONTACTS (for calls & WhatsApp)</div>
+    <div id="contacts-list"></div>
+    <button class="add-contact-btn" onclick="addContactRow()">+ ADD CONTACT</button>
+    <div class="settings-section">HOW TO USE</div>
+    <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--dim);letter-spacing:0.5px;line-height:1.8">
+      1. Enable wake mode (top right button)<br>
+      2. Say <span style="color:var(--arc)">"Hey Jarvis"</span> or <span style="color:var(--arc)">"Hello Jarvis"</span><br>
+      3. Or <span style="color:var(--arc)">clap twice quickly</span> (within 0.8 sec)<br>
+      4. Speak your command after the sound cue<br>
+      5. Type commands manually or tap quick buttons<br><br>
+      <span style="color:var(--gold)">⚠ Keep app in foreground for wake detection.<br>Tap "📱 ALWAYS-ON" for background usage guide.</span>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:8px">
+      <button class="close-btn" style="flex:1" onclick="saveSettingsAndClose()">💾 SAVE & CLOSE</button>
+      <button class="close-btn" onclick="closeSettings()" style="flex:0.5;background:rgba(255,51,51,0.08);border-color:rgba(255,51,51,0.3);color:#ff6666">✕ CLOSE</button>
+    </div>`;
+  document.body.appendChild(panel);
+  renderContactsList();
+}
+
+function renderContactsList() {
+  const list = document.getElementById('contacts-list');
+  if (!list) return;
+  const contacts = getContacts();
+  list.innerHTML = '';
+  contacts.forEach((c, i) => {
+    const row = document.createElement('div');
+    row.className = 'contact-row';
+    row.innerHTML = `<input placeholder="Name (e.g. Mom)" value="${c.name||''}" id="cn-${i}" style="width:35%"><input placeholder="+1234567890" value="${c.phone||''}" id="cp-${i}" style="width:55%"><button class="del-btn" onclick="deleteContact(${i})">✕</button>`;
+    list.appendChild(row);
+  });
+}
+
+function addContactRow() { const c=getContacts(); c.push({name:'',phone:''}); saveContacts(c); renderContactsList(); }
+function deleteContact(idx) { const c=getContacts(); c.splice(idx,1); saveContacts(c); renderContactsList(); }
+function setWakeMethod(method, btn) { wakeMethod=method; document.querySelectorAll('.wake-method-btn').forEach(b=>b.classList.remove('selected')); btn.classList.add('selected'); }
+
+function saveSettingsAndClose() {
+  const contacts = getContacts();
+  const updated = contacts.map((_,i) => ({
+    name: (document.getElementById(`cn-${i}`)?.value||'').trim(),
+    phone: (document.getElementById(`cp-${i}`)?.value||'').trim()
+  })).filter(c => c.name);
+  saveContacts(updated);
+  closeSettings();
+  showNotif('✓ Settings saved, Sir.');
+}
+
+function closeSettings() {
+  const el = document.getElementById('settings-panel-el');
+  if (el) { el.style.opacity='0'; el.style.transition='opacity 0.3s'; setTimeout(()=>el.remove(),300); }
+}
+</script>
+</body>
+</html>
